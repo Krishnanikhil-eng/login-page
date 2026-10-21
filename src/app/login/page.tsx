@@ -28,7 +28,7 @@ export default function LoginPage() {
       password: "",
       rememberMe: false,
     },
-    mode: "onBlur",
+    mode: "onChange",
   });
 
   const onSubmit = async (data: LoginFormData) => {

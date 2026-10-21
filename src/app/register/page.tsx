@@ -41,7 +41,7 @@ export default function RegisterPage() {
       confirmPassword: "",
       acceptTerms: true,
     },
-    mode: "onBlur",
+    mode: "onChange",
   });
 
   const passwordValue = useWatch({ control, name: "password" }) || "";

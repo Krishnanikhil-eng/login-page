@@ -38,7 +38,7 @@ export default function ForgotPasswordPage() {
   } = useForm<ForgotPasswordFormData>({
     resolver: zodResolver(forgotPasswordSchema),
     defaultValues: { email: "" },
-    mode: "onBlur",
+    mode: "onChange",
   });
 
   // Step 3 Form: New Password
@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
   } = useForm<ResetPasswordFormData>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: { password: "", confirmPassword: "" },
-    mode: "onBlur",
+    mode: "onChange",
   });
 
   const newPasswordValue = useWatch({ control: controlReset, name: "password" }) || "";

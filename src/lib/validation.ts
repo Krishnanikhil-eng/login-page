@@ -6,6 +6,8 @@ const LOWERCASE_REGEX = /[a-z]/;
 const NUMBER_REGEX = /[0-9]/;
 const SYMBOL_REGEX = /[^A-Za-z0-9]/;
 const PHONE_REGEX = /^\+?[1-9]\d{6,14}$/;
+// Standard general email structure in lowercase
+const EMAIL_REGEX = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
 
 // Password strength evaluator
 export interface PasswordStrength {
@@ -67,8 +69,13 @@ export const registerSchema = z
     email: z
       .string()
       .trim()
-      .toLowerCase()
-      .email("Please provide a valid email address"),
+      .min(1, "Email address is required")
+      .refine((val) => !/[A-Z]/.test(val), {
+        message: "Email must be in lowercase only. Uppercase letters are not allowed.",
+      })
+      .refine((val) => EMAIL_REGEX.test(val), {
+        message: "Please enter a valid email address (e.g. user@example.com)",
+      }),
     dateOfBirth: z
       .string()
       .min(1, "Date of birth is required")
@@ -138,12 +145,19 @@ export const loginSchema = z.object({
     .string()
     .trim()
     .min(1, "Please enter your email or phone number")
-    .refine((val) => {
-      // Either valid email or phone format
-      const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
-      const isPhone = PHONE_REGEX.test(val.replace(/[\s-]/g, ""));
-      return isEmail || isPhone;
-    }, "Please enter a valid email address or international phone number (e.g. +1234567890)"),
+    .refine((val) => !(val.includes("@") && /[A-Z]/.test(val)), {
+      message: "Email must be in lowercase only. Uppercase letters are not allowed.",
+    })
+    .refine(
+      (val) => {
+        const isEmail = EMAIL_REGEX.test(val);
+        const isPhone = PHONE_REGEX.test(val.replace(/[\s-]/g, ""));
+        return isEmail || isPhone;
+      },
+      {
+        message: "Please enter a valid lowercase email or phone number (e.g. user@example.com or +1234567890)",
+      }
+    ),
   password: z.string().min(1, "Password is required"),
   rememberMe: z.boolean().default(false),
 });
@@ -155,8 +169,13 @@ export const forgotPasswordSchema = z.object({
   email: z
     .string()
     .trim()
-    .toLowerCase()
-    .email("Please provide a valid registered email address"),
+    .min(1, "Email address is required")
+    .refine((val) => !/[A-Z]/.test(val), {
+      message: "Email must be in lowercase only. Uppercase letters are not allowed.",
+    })
+    .refine((val) => EMAIL_REGEX.test(val), {
+      message: "Please enter a valid registered email address (e.g. user@example.com)",
+    }),
 });
 
 export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
