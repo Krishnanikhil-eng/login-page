@@ -10,6 +10,7 @@ import {
   type ForgotPasswordFormData,
   type ResetPasswordFormData,
 } from "@/lib/validation";
+import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/Input";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { PasswordStrengthMeter } from "@/components/ui/PasswordStrengthMeter";
@@ -28,7 +29,8 @@ export default function ForgotPasswordPage() {
   const [otpError, setOtpError] = useState("");
   const [resendCountdown, setResendCountdown] = useState(60);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [mockNotice, setMockNotice] = useState<string | null>(null);
+  const [stepNotice, setStepNotice] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Step 1 Form: Email
   const {
@@ -69,12 +71,27 @@ export default function ForgotPasswordPage() {
   // Handler: Submit Email (Step 1 -> Step 2)
   const onEmailSubmit = async (data: ForgotPasswordFormData) => {
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 700));
-    setIsSubmitting(false);
-    setRecoveryEmail(data.email);
-    setCurrentStep("otp");
-    setResendCountdown(60);
-    setMockNotice("In Phase 1, demo OTP is any 6 digits (e.g. 123456). In Phase 2, Supabase Auth sends real token.");
+    setActionError(null);
+    const normalizedEmail = data.email.trim().toLowerCase();
+    const supabase = createClient();
+
+    try {
+      // Supabase recovery email dispatch
+      await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+        redirectTo: `${window.location.origin}/auth/callback?next=/forgot-password`,
+      });
+    } catch {
+      // Silence error intentionally to satisfy requirement:
+      // "Do not reveal whether an email account exists through public password-recovery responses."
+    } finally {
+      setIsSubmitting(false);
+      setRecoveryEmail(normalizedEmail);
+      setCurrentStep("otp");
+      setResendCountdown(60);
+      setStepNotice(
+        "If an account is associated with this email address, a 6-digit verification code has been dispatched to your inbox."
+      );
+    }
   };
 
   // Handler: Submit OTP (Step 2 -> Step 3)
@@ -86,26 +103,82 @@ export default function ForgotPasswordPage() {
     }
     setOtpError("");
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    setIsSubmitting(false);
-    setCurrentStep("reset");
+    setActionError(null);
+
+    const supabase = createClient();
+
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: recoveryEmail.toLowerCase(),
+        token: otpValue,
+        type: "recovery",
+      });
+
+      if (error) {
+        setOtpError("Invalid or expired verification code. Please check your code or request a new one.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (data.session) {
+        setStepNotice(null);
+        setCurrentStep("reset");
+      } else {
+        setOtpError("Failed to establish password recovery session. Please try again.");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error verifying recovery code.";
+      setOtpError(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Handler: Resend Code
-  const handleResendOtp = () => {
-    if (resendCountdown > 0) return;
+  const handleResendOtp = async () => {
+    if (resendCountdown > 0 || !recoveryEmail) return;
     setResendCountdown(60);
     setOtpValue("");
     setOtpError("");
-    setMockNotice("A new 6-digit verification code was re-issued.");
+    setActionError(null);
+
+    const supabase = createClient();
+    try {
+      await supabase.auth.resetPasswordForEmail(recoveryEmail.toLowerCase(), {
+        redirectTo: `${window.location.origin}/auth/callback?next=/forgot-password`,
+      });
+      setStepNotice("A new 6-digit verification code has been re-dispatched to your inbox.");
+    } catch {
+      setStepNotice("If the email is valid, a new verification code has been sent.");
+    }
   };
 
   // Handler: Submit New Password (Step 3 -> Step 4)
-  const onResetSubmit = async () => {
+  const onResetSubmit = async (data: ResetPasswordFormData) => {
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    setIsSubmitting(false);
-    setCurrentStep("success");
+    setActionError(null);
+    const supabase = createClient();
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: data.password,
+      });
+
+      if (error) {
+        setActionError(error.message);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Invalidate recovery session or sign out to ensure clean sign-in
+      await supabase.auth.signOut();
+      setCurrentStep("success");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to update password.";
+      setActionError(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -174,10 +247,20 @@ export default function ForgotPasswordPage() {
             })}
           </div>
 
-          {mockNotice && (
-            <Alert variant="info" title="Phase 1 Mock Notification">
-              {mockNotice}
-            </Alert>
+          {stepNotice && (
+            <div className="mb-4">
+              <Alert variant="info" title="Recovery Information">
+                {stepNotice}
+              </Alert>
+            </div>
+          )}
+
+          {actionError && (
+            <div className="mb-4">
+              <Alert variant="error" title="Action Error">
+                {actionError}
+              </Alert>
+            </div>
           )}
 
           {/* STEP 1: Enter Email */}

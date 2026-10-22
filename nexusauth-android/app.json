@@ -1,0 +1,63 @@
+{
+  "expo": {
+    "name": "NexusAuth",
+    "slug": "nexusauth",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "nexusauth",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nexusauth.app"
+    },
+    "android": {
+      "package": "com.nexusauth.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0F172A",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": false,
+          "data": [
+            {
+              "scheme": "nexusauth"
+            },
+            {
+              "scheme": "nexusauth",
+              "host": "auth"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "@react-native-community/datetimepicker",
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "NexusAuth needs your location to automatically fill your registration address."
+        }
+      ],
+      "expo-web-browser"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "dcac5035-ae94-4155-bb40-605c1bc14851"
+      }
+    }
+  }
+}

@@ -83,11 +83,18 @@ Open your browser and navigate to:
 - **Homepage & Hub**: [http://localhost:3000](http://localhost:3000)
 - **Registration**: [http://localhost:3000/register](http://localhost:3000/register)
 - **Sign In**: [http://localhost:3000/login](http://localhost:3000/login)
+- **Protected Profile**: [http://localhost:3000/profile](http://localhost:3000/profile)
 - **Password Recovery**: [http://localhost:3000/forgot-password](http://localhost:3000/forgot-password)
-- **Email Verification UI**: [http://localhost:3000/auth/verify](http://localhost:3000/auth/verify)
-- **OAuth Callback UI**: [http://localhost:3000/auth/callback](http://localhost:3000/auth/callback)
+- **Email Verification Hub**: [http://localhost:3000/auth/verify](http://localhost:3000/auth/verify)
+- **OAuth Callback Route**: [http://localhost:3000/auth/callback](http://localhost:3000/auth/callback)
 
-### 4. Build for Production
+### 4. Run Phase 2 Security & Auth Tests
+To verify all 19 Phase 2 security and authentication checks:
+```bash
+npm run test:phase2
+```
+
+### 5. Build for Production
 To verify an optimized production bundle:
 ```bash
 npm run build
@@ -98,27 +105,13 @@ To run the production server locally after building:
 npm run start
 ```
 
-### 5. Run Linting
-```bash
-npm run lint
-```
-
 ---
 
-## 🔒 Security & Validation Details (Phase 1)
-- **Client-Side Zod Schemas**: Strict validation for emails, passwords, age requirement (13+ years), phone digits, and address details.
-- **Dynamic Password Strength Meter**: Evaluates length (8+), uppercase, lowercase, numbers, and symbols with live visual feedback.
-- **Zero-Knowledge Sanitization**: Passwords are kept out of query strings, application state persistence, and logs.
-- **Phase 1 Mock State**: Forms validate completely in-memory with user-friendly feedback without transmitting live secrets.
-
----
-
-## 🚀 What Comes in Phase 2 (Awaiting Approval)
-Once you approve moving to Phase 2:
-1. Connecting a real Supabase project (URL & Anon Key).
-2. Setting up PostgreSQL profiles table and migrations.
-3. Enabling PostgreSQL Row Level Security (RLS) policies.
-4. Wiring up real email/password registration with Supabase Auth email confirmation.
-5. Server-side session validation via Next.js SSR cookies (`@supabase/ssr`).
-6. Configuring Google OAuth credentials in Google Cloud Console & Supabase dashboard.
-7. Real email OTP password recovery dispatch and token validation.
+## 🔒 Security & Architecture Details (Phase 2)
+- **Supabase SSR with Next.js 16 Proxy**: Session tokens refreshed via `src/proxy.ts` and validated server-side via `supabase.auth.getUser()`.
+- **PostgreSQL Row Level Security (RLS)**: `public.profiles` isolated with `auth.uid() = id`. User A can never access or mutate User B's profile.
+- **Zero Sensitive Data in Profiles**: Passwords and OTP tokens are NEVER stored in `public.profiles`.
+- **Lowercase Email Normalization**: Emails are strictly normalized to lowercase before API calls and database writes, with a database check constraint.
+- **Account Enumeration Protection**: Public password recovery responses never reveal whether an email account exists.
+- **Explicit Phone Identity Boundary**: Distinguishes email logins from phone inputs; clearly explains SMS provider setup requirements rather than failing silently.
+- **Google OAuth Status Guard**: Marks unconfigured OAuth as pending and provides clear Google Cloud Console configuration guidance.

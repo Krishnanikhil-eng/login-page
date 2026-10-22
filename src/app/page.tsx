@@ -14,6 +14,7 @@ import {
   Sparkles,
   Layers,
   FileCheck,
+  User,
 } from "lucide-react";
 
 export default function Home() {
@@ -22,37 +23,46 @@ export default function Home() {
       title: "User Registration",
       href: "/register",
       icon: <UserPlus className="w-5 h-5 text-violet-400" />,
-      tag: "Complete UI",
+      tag: "Live Supabase Auth",
       tagVariant: "violet" as const,
       description:
-        "Full name, email, DOB with 13+ age validation, phone with country selector, address fields, dynamic password strength meter, terms modal, and Google sign-up.",
+        "Full name, lowercase email, DOB (13+), phone, address fields, dynamic password strength meter, RLS profile provisioning, and Google sign-up.",
     },
     {
       title: "Universal Sign-In",
       href: "/login",
       icon: <KeyRound className="w-5 h-5 text-cyan-400" />,
-      tag: "Complete UI",
+      tag: "Session SSR",
       tagVariant: "cyan" as const,
       description:
-        "Dual email or phone input format verification, show/hide password toggle, session persistence semantics, and Google OAuth action button.",
+        "Email/password authentication with lowercase normalization, explicit phone provider boundary check, session persistence, and Google OAuth.",
     },
     {
       title: "Password Recovery",
       href: "/forgot-password",
       icon: <RefreshCw className="w-5 h-5 text-emerald-400" />,
-      tag: "Multi-Step Flow",
+      tag: "Live OTP Wizard",
       tagVariant: "emerald" as const,
       description:
-        "4-step recovery wizard: email format validation, 6-digit OTP entry, 60s resend countdown timer, and password reset with matching confirmation.",
+        "4-step recovery wizard: secure email dispatch without account leakage, 6-digit OTP verification, 60s countdown, and cryptographic password reset.",
     },
     {
-      title: "Verification & Callbacks",
+      title: "Protected Profile Dashboard",
+      href: "/profile",
+      icon: <User className="w-5 h-5 text-indigo-400" />,
+      tag: "RLS Protected",
+      tagVariant: "cyan" as const,
+      description:
+        "Server-side session verified profile viewer displaying isolated user claims from PostgreSQL public.profiles with one-click sign-out.",
+    },
+    {
+      title: "Verification Pipeline",
       href: "/auth/verify",
       icon: <MailCheck className="w-5 h-5 text-amber-400" />,
-      tag: "Routes Ready",
+      tag: "Live Resend API",
       tagVariant: "amber" as const,
       description:
-        "Route placeholders and UI states for email confirmation, PKCE code exchange, and recovery link handling prepared for Phase 2 Supabase SSR.",
+        "Email confirmation instructions, resend verification token pipeline, and PKCE callback code exchange integration.",
     },
   ];
 
@@ -61,25 +71,25 @@ export default function Home() {
       icon: <Lock className="w-5 h-5 text-violet-400" />,
       title: "Zero-Leak Architecture",
       detail:
-        "Passwords and credentials are sanitized from logs, query params, and persistent browser storage. Strictly enforced client-side Zod validation prevents malformed payloads.",
+        "Passwords and OTPs are never stored in public profiles. Public password recovery responses never reveal user account existence.",
     },
     {
       icon: <Database className="w-5 h-5 text-cyan-400" />,
-      title: "Supabase SSR Foundation",
+      title: "PostgreSQL & Strict RLS",
       detail:
-        "Pre-configured client and server initialization helpers via @supabase/ssr, ready for Next.js 16 App Router cookie handling in Phase 2.",
+        "public.profiles enforced by Row Level Security policies ensuring User A can never read or mutate User B's record.",
     },
     {
       icon: <Layers className="w-5 h-5 text-indigo-400" />,
-      title: "Design System & Tokens",
+      title: "Next.js 16 Proxy Session",
       detail:
-        "Midnight navy canvas, electric violet primary accents, cyan glow highlights, glassmorphic panels, and accessible typography from Geist Sans.",
+        "Modern Next.js 16 proxy convention with @supabase/ssr cookie exchange and server-side route protection.",
     },
     {
       icon: <FileCheck className="w-5 h-5 text-emerald-400" />,
-      title: "Strict Type Safety",
+      title: "Strict Normalization",
       detail:
-        "TypeScript with strict mode, zero any types in application forms, full Zod inference, and Next.js Turbopack build optimization.",
+        "Automatic lowercase email normalization, strict age validation, and safe separation between email and SMS phone auth.",
     },
   ];
 
@@ -90,7 +100,7 @@ export default function Home() {
         <div className="inline-flex items-center gap-2">
           <Badge variant="violet" className="py-1 px-3 text-xs">
             <Sparkles className="w-3.5 h-3.5 text-violet-400 animate-pulse" />
-            Phase 1 Execution: Complete Foundation & UI
+            Phase 2 Active: Live Supabase Auth Engine
           </Badge>
         </div>
 
@@ -102,7 +112,7 @@ export default function Home() {
         </h1>
 
         <p className="text-base sm:text-lg text-slate-400 leading-relaxed max-w-2xl mx-auto">
-          NexusAuth delivers an enterprise-grade authentication interface designed with deep midnight navy aesthetics, electric violet glow, resilient Zod form validation, and SSR-ready architecture.
+          NexusAuth delivers an enterprise-grade authentication interface designed with deep midnight navy aesthetics, electric violet glow, resilient Zod form validation, and real Supabase SSR session handling.
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
@@ -116,9 +126,9 @@ export default function Home() {
               Test Sign-In Screen
             </Button>
           </Link>
-          <Link href="/forgot-password">
+          <Link href="/profile">
             <Button variant="outline" size="lg">
-              Test Recovery Wizard
+              View Profile Dashboard
             </Button>
           </Link>
         </div>
@@ -130,16 +140,16 @@ export default function Home() {
           <div>
             <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-violet-400" />
-              Phase 1 Interactive Screens
+              Live Authentication Screens & Flows
             </h2>
             <p className="text-xs sm:text-sm text-slate-400">
-              Explore and test each authentication screen built with complete client-side validation
+              Explore and test each authentication screen connected to Supabase Auth and PostgreSQL RLS
             </p>
           </div>
-          <Badge variant="cyan">All 4 Screens Interactive</Badge>
+          <Badge variant="cyan">Phase 2 Engine Connected</Badge>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {screens.map((screen) => (
             <Card
               key={screen.href}
@@ -216,17 +226,17 @@ export default function Home() {
                 Project Milestone Tracking
               </h3>
             </div>
-            <Badge variant="violet" className="self-start sm:self-auto">
-              Phase 1 of 3 Active
+            <Badge variant="emerald" className="self-start sm:self-auto">
+              Phase 2 Active
             </Badge>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
             {/* Phase 1 Box */}
-            <div className="p-4 rounded-xl bg-violet-950/30 border border-violet-500/40 space-y-2">
+            <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-800 space-y-2 opacity-80">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-violet-300">PHASE 1 (NOW)</span>
-                <span className="text-[10px] font-mono bg-violet-500/20 text-violet-300 px-2 py-0.5 rounded-full">
+                <span className="text-xs font-bold text-slate-300">PHASE 1</span>
+                <span className="text-[10px] font-mono bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full">
                   COMPLETED
                 </span>
               </div>
@@ -237,16 +247,16 @@ export default function Home() {
             </div>
 
             {/* Phase 2 Box */}
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2 opacity-80">
+            <div className="p-4 rounded-xl bg-violet-950/30 border border-violet-500/50 space-y-2 shadow-lg shadow-violet-950/20">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400">PHASE 2</span>
-                <span className="text-[10px] font-mono bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">
-                  PENDING APPROVAL
+                <span className="text-xs font-bold text-violet-300">PHASE 2 (CURRENT)</span>
+                <span className="text-[10px] font-mono bg-violet-500/20 text-violet-300 px-2 py-0.5 rounded-full">
+                  IMPLEMENTED
                 </span>
               </div>
-              <h4 className="font-semibold text-sm text-slate-200">Real Supabase Auth</h4>
+              <h4 className="font-semibold text-sm text-white">Real Supabase Auth & RLS</h4>
               <p className="text-xs text-slate-400 leading-relaxed">
-                PostgreSQL schema & RLS migrations, email verification pipeline, real Supabase session exchange, Google OAuth credentials, and password recovery tokens.
+                PostgreSQL schema & RLS migration, Supabase Auth sign-up, email verification, session SSR exchange via proxy, Google OAuth flow, and recovery OTP verification.
               </p>
             </div>
 
@@ -260,7 +270,7 @@ export default function Home() {
               </div>
               <h4 className="font-semibold text-sm text-slate-200">Profile & Hardening</h4>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Protected user dashboard, profile editing, account deletion, session invalidation, automated E2E tests, and production deployment guide.
+                Interactive profile editing, avatar uploads, multi-factor authentication (MFA), account deletion, E2E browser automation, and production deployment guide.
               </p>
             </div>
           </div>

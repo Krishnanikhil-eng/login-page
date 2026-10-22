@@ -4,16 +4,52 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
-import { MailCheck, RotateCcw, ArrowRight, ShieldCheck, Inbox } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { MailCheck, RotateCcw, ArrowRight, ShieldCheck, Inbox, Mail } from "lucide-react";
 
 export default function VerifyPage() {
+  const [resendEmail, setResendEmail] = useState("");
   const [resendStatus, setResendStatus] = useState<string | null>(null);
+  const [resendError, setResendError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSimulateResend = () => {
-    setResendStatus("Simulated verification link dispatched to inbox.");
-    setTimeout(() => setResendStatus(null), 4000);
+  const handleResend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resendEmail || !resendEmail.includes("@")) {
+      setResendError("Please enter a valid email address.");
+      return;
+    }
+
+    setIsLoading(true);
+    setResendStatus(null);
+    setResendError(null);
+
+    const supabase = createClient();
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: resendEmail.trim().toLowerCase(),
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/profile`,
+        },
+      });
+
+      if (error) {
+        setResendError(error.message);
+      } else {
+        setResendStatus(
+          `Verification link re-dispatched to ${resendEmail.trim().toLowerCase()}. Please check your inbox and spam folder.`
+        );
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to dispatch verification email.";
+      setResendError(msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -26,50 +62,66 @@ export default function VerifyPage() {
             </div>
           </div>
           <div className="flex justify-center mb-1">
-            <Badge variant="cyan">Verification Route (Phase 1 Preview)</Badge>
+            <Badge variant="cyan">Supabase Verification Pipeline</Badge>
           </div>
           <CardTitle className="text-2xl sm:text-3xl">Verify Your Email Address</CardTitle>
           <CardDescription>
-            We have prepared the secure email confirmation pipeline for NexusAuth.
+            NexusAuth requires email verification to ensure account ownership and security
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <Alert variant="info" title="Phase 1 Architectural Placeholder">
-            In Phase 2, Supabase Auth sends an email containing a secure HMAC-signed token or magic link redirecting to this verification screen.
-          </Alert>
-
           {resendStatus && (
-            <Alert variant="success" title="Notification">
+            <Alert variant="success" title="Email Dispatched">
               {resendStatus}
+            </Alert>
+          )}
+
+          {resendError && (
+            <Alert variant="error" title="Resend Error">
+              {resendError}
             </Alert>
           )}
 
           <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-4 text-left space-y-3">
             <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-              <Inbox className="w-4 h-4 text-violet-400" /> What to expect in Phase 2:
+              <Inbox className="w-4 h-4 text-violet-400" /> How Email Verification Works:
             </h4>
             <ul className="text-xs text-slate-400 space-y-2 list-disc list-inside">
-              <li>Automatic token extraction from query parameters (`?code=...` or `#access_token=...`)</li>
-              <li>Server-side SSR token verification using `@supabase/ssr`</li>
-              <li>Instant profile status upgrade from `unverified` to `verified`</li>
-              <li>Seamless automatic redirect to user dashboard</li>
+              <li>When you register, Supabase dispatches a confirmation email containing a cryptographic link.</li>
+              <li>Clicking the link redirects to <code className="text-cyan-400 font-mono">/auth/callback</code> with an authorization code.</li>
+              <li>Our server exchanges the code for a verified session and activates your profile.</li>
+              <li>If you haven&apos;t received your link, request a new dispatch below.</li>
             </ul>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+          <form onSubmit={handleResend} className="space-y-3 pt-2 text-left">
+            <Input
+              label="Need another verification link?"
+              type="email"
+              placeholder="Enter your registered email"
+              value={resendEmail}
+              onChange={(e) => setResendEmail(e.target.value)}
+              leftIcon={<Mail className="w-4 h-4" />}
+            />
             <Button
+              type="submit"
               variant="outline"
               size="md"
-              onClick={handleSimulateResend}
+              isLoading={isLoading}
+              className="w-full"
               leftIcon={<RotateCcw className="w-4 h-4" />}
             >
-              Simulate Resend Email
+              Resend Verification Email
             </Button>
-            <Link href="/login" className="inline-flex">
+          </form>
+
+          <div className="pt-2">
+            <Link href="/login" className="inline-flex w-full justify-center">
               <Button
                 variant="primary"
                 size="md"
+                className="w-full font-semibold"
                 rightIcon={<ArrowRight className="w-4 h-4" />}
               >
                 Proceed to Sign In

@@ -2,9 +2,11 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { registerSchema, type RegisterFormData } from "@/lib/validation";
+import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/Input";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { PasswordStrengthMeter } from "@/components/ui/PasswordStrengthMeter";
@@ -12,10 +14,14 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
 import { Alert } from "@/components/ui/Alert";
 import { GoogleButton } from "@/components/auth/GoogleButton";
-import { User, Mail, Calendar, Phone, MapPin, Building, Globe, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { User, Mail, Calendar, Phone, MapPin, Building, Globe, ShieldCheck, CheckCircle2, Inbox } from "lucide-react";
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [submissionSuccess, setSubmissionSuccess] = useState<RegisterFormData | null>(null);
+  const [emailConfirmationRequired, setEmailConfirmationRequired] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState("");
+  const [authError, setAuthError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
 
@@ -48,10 +54,99 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: RegisterFormData) => {
     setIsSubmitting(true);
-    // Simulate Phase 1 mock validation flow without real API leakage
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    setIsSubmitting(false);
-    setSubmissionSuccess(data);
+    setAuthError(null);
+
+    const normalizedEmail = data.email.trim().toLowerCase();
+    const supabase = createClient();
+
+    try {
+      const { data: authResult, error: signUpError } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password: data.password,
+        options: {
+          data: {
+            full_name: data.fullName,
+            date_of_birth: data.dateOfBirth,
+            country_code: data.countryCode,
+            phone_number: data.phoneNumber,
+            street_address: data.streetAddress,
+            city: data.city,
+            state: data.state,
+            postal_code: data.postalCode,
+            country: data.country,
+          },
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/profile`,
+        },
+      });
+
+      if (signUpError) {
+        if (
+          signUpError.message.toLowerCase().includes("already registered") ||
+          signUpError.message.toLowerCase().includes("already in use")
+        ) {
+          setAuthError(
+            "An account with this email address already exists. Please sign in or use password recovery."
+          );
+        } else {
+          setAuthError(signUpError.message);
+        }
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Check for user enumeration protection where Supabase returns empty identities for existing users
+      if (
+        authResult.user &&
+        authResult.user.identities &&
+        authResult.user.identities.length === 0
+      ) {
+        setAuthError(
+          "An account with this email address already exists. Please sign in or use password recovery."
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
+      setRegisteredEmail(normalizedEmail);
+
+      // If a session was immediately established (e.g. email confirmation disabled in Supabase)
+      if (authResult.session) {
+        // Also attempt client-side profile upsert in case the DB trigger is pending
+        try {
+          await supabase.from("profiles").upsert(
+            {
+              id: authResult.user?.id,
+              full_name: data.fullName,
+              email: normalizedEmail,
+              date_of_birth: data.dateOfBirth || null,
+              country_code: data.countryCode,
+              phone_number: data.phoneNumber,
+              street_address: data.streetAddress,
+              city: data.city,
+              state: data.state,
+              postal_code: data.postalCode,
+              country: data.country,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "id" }
+          );
+        } catch {
+          // Non-blocking: DB trigger on auth.users will handle provisioning
+        }
+
+        setSubmissionSuccess(data);
+        setEmailConfirmationRequired(false);
+      } else {
+        // Email verification required
+        setEmailConfirmationRequired(true);
+        setSubmissionSuccess(data);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "An unexpected registration error occurred.";
+      setAuthError(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -70,37 +165,74 @@ export default function RegisterPage() {
         </CardHeader>
 
         <CardContent>
-          {/* Phase 1 Dev Mode Notification */}
-          <Alert variant="info" title="Phase 1 Interactive Preview">
-            Complete client-side Zod validation is active. Data submitted here is safely validated in-memory and will connect to Supabase PostgreSQL in Phase 2.
-          </Alert>
+          {authError && (
+            <div className="mb-4">
+              <Alert variant="error" title="Registration Error">
+                {authError}
+              </Alert>
+            </div>
+          )}
 
           {submissionSuccess ? (
             <div className="py-6 space-y-4 animate-fadeIn text-center">
               <div className="w-14 h-14 bg-emerald-950/60 border border-emerald-500/40 rounded-full flex items-center justify-center mx-auto text-emerald-400">
-                <CheckCircle2 className="w-8 h-8" />
+                {emailConfirmationRequired ? (
+                  <Inbox className="w-8 h-8 text-cyan-400" />
+                ) : (
+                  <CheckCircle2 className="w-8 h-8" />
+                )}
               </div>
-              <h3 className="text-xl font-semibold text-white">Validation Succeeded!</h3>
+
+              <h3 className="text-xl font-semibold text-white">
+                {emailConfirmationRequired
+                  ? "Verify Your Email Address"
+                  : "Account Successfully Created!"}
+              </h3>
+
               <p className="text-sm text-slate-300 max-w-md mx-auto">
-                Account information for <span className="text-violet-400 font-semibold">{submissionSuccess.fullName}</span> ({submissionSuccess.email}) satisfied all strict validation rules.
+                {emailConfirmationRequired ? (
+                  <>
+                    A verification link has been dispatched to{" "}
+                    <span className="text-cyan-400 font-semibold">{registeredEmail}</span>.
+                    Please check your inbox to confirm your account and activate your profile.
+                  </>
+                ) : (
+                  <>
+                    Welcome to NexusAuth,{" "}
+                    <span className="text-violet-400 font-semibold">{submissionSuccess.fullName}</span>!
+                    Your authenticated session is active and your profile record is provisioned.
+                  </>
+                )}
               </p>
+
               <div className="bg-slate-950/80 rounded-xl p-4 text-left font-mono text-xs text-slate-400 border border-slate-800 space-y-1">
                 <div><span className="text-slate-500">Name:</span> {submissionSuccess.fullName}</div>
-                <div><span className="text-slate-500">Email:</span> {submissionSuccess.email}</div>
+                <div><span className="text-slate-500">Email:</span> {registeredEmail || submissionSuccess.email}</div>
                 <div><span className="text-slate-500">Phone:</span> {submissionSuccess.countryCode} {submissionSuccess.phoneNumber}</div>
                 <div><span className="text-slate-500">DOB:</span> {submissionSuccess.dateOfBirth}</div>
                 <div><span className="text-slate-500">Address:</span> {submissionSuccess.city}, {submissionSuccess.country}</div>
               </div>
+
               <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
-                <Button
-                  variant="outline"
-                  onClick={() => setSubmissionSuccess(null)}
-                >
-                  Edit / Test Again
-                </Button>
-                <Link href="/login" className="inline-flex">
-                  <Button variant="primary">Proceed to Sign In</Button>
-                </Link>
+                {emailConfirmationRequired ? (
+                  <>
+                    <Link href="/auth/verify" className="inline-flex">
+                      <Button variant="secondary">View Verification Guide</Button>
+                    </Link>
+                    <Link href="/login" className="inline-flex">
+                      <Button variant="primary">Proceed to Sign In</Button>
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="primary"
+                      onClick={() => router.push("/profile")}
+                    >
+                      Go to Your Profile
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           ) : (
@@ -335,7 +467,7 @@ export default function RegisterPage() {
             <div className="text-xs text-slate-300 space-y-2 max-h-60 overflow-y-auto pr-2">
               <p>1. <strong>Identity Protection:</strong> NexusAuth enforces cryptographic token protection, rate limiting, and zero-leak session boundaries.</p>
               <p>2. <strong>Data Privacy:</strong> User details are strictly segmented via PostgreSQL Row Level Security policies.</p>
-              <p>3. <strong>Development Preview:</strong> In Phase 1, all form interactions validate client data in-memory without persistent transmission.</p>
+              <p>3. <strong>Security Standards:</strong> Real-time session encryption and multi-factor capabilities protect your personal information.</p>
             </div>
             <div className="pt-2 flex justify-end">
               <Button
